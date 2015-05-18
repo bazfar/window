@@ -29,7 +29,11 @@ class Control
 public:
 	Control(int x, int y, int width, int height, int anchor, int id) :
 		m_x(x), m_y(y), m_width(width), m_height(height), m_anchor(anchor), m_id(id) { }
+
 	virtual ~Control() { }
+
+	std::wstring getText();
+	void setText(const std::wstring& text);
 
 protected:
 	HWND m_hwnd;
@@ -61,7 +65,16 @@ public:
 	TextBox(int x, int y, int width, int height, int anchor, int id, std::wstring text) :
 		Control(x, y, width, height, anchor, id), m_text(text) { }
 
-	std::wstring getText();
+private:
+	std::wstring m_text;
+};
+
+class Label : public Control
+{
+	friend class Window;
+public:
+	Label(int x, int y, int width, int height, int anchor, int id, std::wstring text) :
+		Control(x, y, width, height, anchor, id), m_text(text) { }
 
 private:
 	std::wstring m_text;
@@ -74,14 +87,18 @@ public:
 	~Window();
 
 	bool show();
+
 	std::shared_ptr<Button> addButton(std::wstring text, int x, int y, int width, int height, int anchor, std::function<void()> click, bool defaultButton = false);
 	std::shared_ptr<TextBox> addTextBox(std::wstring text, int x, int y, int width, int height, int anchor);
+	std::shared_ptr<Label> addLabel(std::wstring text, int x, int y, int width, int height, int anchor);
+
 	void msgBox(std::wstring title, std::wstring message, UINT style);
 	HWND getMainWindowHandle() { return m_hMainWindow; }
 
 private:
 	bool createControls();
 	static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	static void resizeControl(std::shared_ptr<Control> control, int oldWidth, int oldHeight, int newWidth, int newHeight);
 	static int getNewId();
 
 	std::wstring m_title;
@@ -93,6 +110,7 @@ private:
 	HWND m_hMainWindow;
 	std::list<std::shared_ptr<Button>> m_buttons;
 	std::list<std::shared_ptr<TextBox>> m_textBoxes;
+	std::list<std::shared_ptr<Label>> m_labels;
 	std::shared_ptr<Button> m_defaultButton;
 
 	static int controlIdCounter;

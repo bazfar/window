@@ -11,7 +11,7 @@
 int Window::controlIdCounter = 0;
 bool Window::wndClassRegistered = false;
 
-std::wstring TextBox::getText()
+std::wstring Control::getText()
 {
 	int length = GetWindowTextLength(m_hwnd);
 
@@ -21,6 +21,11 @@ std::wstring TextBox::getText()
 	GetWindowText(m_hwnd, &text[0], length + 1);
 
 	return text;
+}
+
+void Control::setText(const std::wstring& text)
+{
+	SetWindowText(m_hwnd, text.c_str());
 }
 
 Window::Window(std::wstring title, int width, int height, HINSTANCE hInst, int minWidth, int minHeight) :
@@ -130,6 +135,15 @@ std::shared_ptr<TextBox> Window::addTextBox(std::wstring text, int x, int y, int
 	return control;
 }
 
+std::shared_ptr<Label> Window::addLabel(std::wstring text, int x, int y, int width, int height, int anchor)
+{
+	auto control = std::make_shared<Label>(x, y, width, height, anchor, getNewId(), text);
+
+	m_labels.push_back(control);
+
+	return control;
+}
+
 void Window::msgBox(std::wstring title, std::wstring message, UINT style)
 {
 	MessageBox(m_hMainWindow, message.c_str(), title.c_str(), style);
@@ -162,6 +176,19 @@ bool Window::createControls()
 
 		SendMessage(control->m_hwnd, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), MAKELPARAM(TRUE, 0));
 		SendMessage(control->m_hwnd, EM_SETMARGINS, static_cast<WPARAM>(EC_LEFTMARGIN | EC_RIGHTMARGIN), MAKELPARAM(2, 2));
+	}
+
+	for(auto it = m_labels.begin(); it != m_labels.end(); ++it)
+	{
+		auto control = *it;
+
+		control->m_hwnd = CreateWindow(L"STATIC", control->m_text.c_str(), WS_CHILD | WS_VISIBLE, control->m_x,
+			control->m_y, control->m_width, control->m_height, m_hMainWindow, (HMENU)control->m_id, m_hInstance, NULL);
+
+		if(!control->m_hwnd)
+			return false;
+
+		SendMessage(control->m_hwnd, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), MAKELPARAM(TRUE, 0));
 	}
 
 	return true;
@@ -219,45 +246,13 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
 			Window* w = (Window*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
 
 			for(auto it = w->m_buttons.begin(); it != w->m_buttons.end(); ++it)
-			{
-				auto button = *it;
+				resizeControl(*it, w->m_mainWindowWidth, w->m_mainWindowHeight, newWidth, newHeight);
 
-				if(button->m_anchor & ANCHOR_RIGHT)
-				{
-					if(button->m_anchor & ANCHOR_LEFT)
-					{
-						button->m_width += newWidth - w->m_mainWindowWidth;
+			for(auto it = w->m_textBoxes.begin(); it != w->m_textBoxes.end(); ++it)
+				resizeControl(*it, w->m_mainWindowWidth, w->m_mainWindowHeight, newWidth, newHeight);
 
-						SetWindowPos(button->m_hwnd, NULL, button->m_x, button->m_y, button->m_width, button->m_height, 0);
-					}
-					else
-					{
-						int distFromRight = w->m_mainWindowWidth - button->m_x;
-
-						button->m_x = newWidth - distFromRight;
-
-						SetWindowPos(button->m_hwnd, NULL, button->m_x, button->m_y, button->m_width, button->m_height, 0);
-					}
-				}
-
-				if(button->m_anchor & ANCHOR_BOTTOM)
-				{
-					if(button->m_anchor & ANCHOR_TOP)
-					{
-						button->m_height += newHeight - w->m_mainWindowHeight;
-
-						SetWindowPos(button->m_hwnd, NULL, button->m_x, button->m_y, button->m_width, button->m_height, 0);
-					}
-					else
-					{
-						int distFromBottom = w->m_mainWindowHeight - button->m_y;
-
-						button->m_y = newHeight - distFromBottom;
-
-						SetWindowPos(button->m_hwnd, NULL, button->m_x, button->m_y, button->m_width, button->m_height, 0);
-					}
-				}
-			}
+			for(auto it = w->m_labels.begin(); it != w->m_labels.end(); ++it)
+				resizeControl(*it, w->m_mainWindowWidth, w->m_mainWindowHeight, newWidth, newHeight);
 
 			w->m_mainWindowWidth = newWidth;
 			w->m_mainWindowHeight = newHeight;
@@ -267,12 +262,12 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
 
 		case WM_GETMINMAXINFO:
 		{
-			Window *pw = (Window *)GetWindowLong(hWnd, GWLP_USERDATA);
+			Window* pw = (Window*)GetWindowLong(hWnd, GWLP_USERDATA);
 
 			if(pw == NULL)
 				break;
 
-			MINMAXINFO *mmi = (MINMAXINFO *)lParam;
+			MINMAXINFO* mmi = (MINMAXINFO*)lParam;
 
 			mmi->ptMinTrackSize.x = pw->m_minimumWidth;
 			mmi->ptMinTrackSize.y = pw->m_minimumHeight;
@@ -286,6 +281,45 @@ LRESULT CALLBACK Window::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
 	}
 
 	return 0;
+}
+
+void Window::resizeControl(std::shared_ptr<Control> control, int oldWidth, int oldHeight, int newWidth, int newHeight)
+{
+	if(control->m_anchor & ANCHOR_RIGHT)
+	{
+		if(control->m_anchor & ANCHOR_LEFT)
+		{
+			control->m_width += newWidth - oldWidth;
+
+			SetWindowPos(control->m_hwnd, NULL, control->m_x, control->m_y, control->m_width, control->m_height, 0);
+		}
+		else
+		{
+			int distFromRight = oldWidth - control->m_x;
+
+			control->m_x = newWidth - distFromRight;
+
+			SetWindowPos(control->m_hwnd, NULL, control->m_x, control->m_y, control->m_width, control->m_height, 0);
+		}
+	}
+
+	if(control->m_anchor & ANCHOR_BOTTOM)
+	{
+		if(control->m_anchor & ANCHOR_TOP)
+		{
+			control->m_height += newHeight - oldHeight;
+
+			SetWindowPos(control->m_hwnd, NULL, control->m_x, control->m_y, control->m_width, control->m_height, 0);
+		}
+		else
+		{
+			int distFromBottom = oldHeight - control->m_y;
+
+			control->m_y = newHeight - distFromBottom;
+
+			SetWindowPos(control->m_hwnd, NULL, control->m_x, control->m_y, control->m_width, control->m_height, 0);
+		}
+	}
 }
 
 int Window::getNewId()
