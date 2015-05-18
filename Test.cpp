@@ -1,3 +1,9 @@
+/*
+	Simple Win32 GUI class
+	
+	Copyright (c) 2015 Brett Whiteman
+*/
+
 #include "Window.h"
 
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char* cmdLine, int nCmdShow)

@@ -1,3 +1,9 @@
+/*
+	Simple Win32 GUI class
+	
+	Copyright (c) 2015 Brett Whiteman
+*/
+
 #include "Window.h"
 
 #define WINDOW_CLASS_NAME L"Window"

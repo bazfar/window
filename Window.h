@@ -1,4 +1,12 @@
-#pragma once
+/*
+	Simple Win32 GUI class
+	
+	Copyright (c) 2015 Brett Whiteman
+*/
+
+#ifndef WINDOW_WINDOW_H
+#define WINDOW_WINDOW_H
+
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <list>
@@ -99,3 +107,4 @@ private:
 						"publicKeyToken='6595b64144ccf1df' "\
 						"language='*' "\
 						"\"")
+#endif
