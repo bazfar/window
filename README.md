@@ -7,6 +7,12 @@ A very simple, minimal C++ Win32 GUI library
 Simply drop the files Window.cpp and Window.h into your project and use it like this:
 
 ```C++
+#include <Window.h>
+
+
+// ...
+
+
 // Create a new Window object with the title "Test Window", size of 400x300
 // and minimum size of 200x150
 Window window(L"Test Window", 400, 300, hInstance, 200, 150);
